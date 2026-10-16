@@ -1,0 +1,11 @@
+.gradle/
+**/bin/
+**/bin_test/
+**/generated/
+cnf/cache/
+cnf/repo/
+**/_rt/
+reports/
+screenshots/
+**/build/
+dist/

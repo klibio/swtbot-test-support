@@ -1,0 +1,3 @@
+Bundle-SymbolicName: ${project.name}.fixture
+Bundle-Activator: io.klib.swtbot.fixture.UiFixture
+Export-Package: io.klib.swtbot.fixture;version=0.1.0

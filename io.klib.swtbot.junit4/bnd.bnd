@@ -1,0 +1,7 @@
+Bundle-Description: JUnit 4 rule capturing screenshots for SWT/SWTBot tests via io.klib.swtbot.support.
+-buildpath: \
+    io.klib.swtbot.support;version=snapshot,\
+    org.eclipse.swt.win32.win32.x86_64;version='[3.135,3.136)',\
+    org.junit;version='[4.13.2,5)'
+Export-Package: io.klib.swtbot.junit4;version=0.1.0
+-nojunitosgi: true

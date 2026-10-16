@@ -1,0 +1,39 @@
+javac.source: 17
+javac.target: 17
+javac.compliance: 17
+
+Git-Descriptor: ${system-allow-fail;git describe --dirty --always --abbrev=9}
+Git-SHA: ${system-allow-fail;git rev-list -1 --no-abbrev-commit HEAD}
+
+base.version: 0.1.0
+Bundle-Version: ${if;${env;RELEASE_BUNDLE_VERSION};${env;RELEASE_BUNDLE_VERSION};${base.version}.SNAPSHOT}
+Bundle-SymbolicName: ${project.name}
+
+# Release workflows inject versions from validated Git tags; local builds use base.version.SNAPSHOT.
+# Maven GAV, signing, vendor, license, SCM and developer settings: cnf/ext/maven-gav.bnd
+# Release repositories and connection settings: cnf/ext/repositories.bnd
+
+-reproducible: true
+-noextraheaders: true
+-testpath: org.junit;version='[4.13.2,5)',org.hamcrest;version='[3,4)'
+
+-plugin.support: aQute.bnd.deployer.repository.LocalIndexedRepo; \
+    name='SWTBot Test Support'; \
+    local='${user.home}/.bnd/repositories/swtbot-test-support'; \
+    pretty=true
+
+-plugin.eclipse: aQute.bnd.repository.p2.provider.P2Repository; \
+    name='Eclipse 4.41'; \
+    url='https://download.eclipse.org/eclipse/updates/4.41/R-4.41-202608281142'; \
+    location='${build}/cache/eclipse'
+
+-plugin.swtbot: aQute.bnd.repository.p2.provider.P2Repository; \
+    name='SWTBot'; \
+    url='https://download.eclipse.org/technology/swtbot/releases/4.3.0'; \
+    location='${build}/cache/swtbot'
+
+-plugin.central: aQute.bnd.repository.maven.provider.MavenBndRepository; \
+    name='Maven Central'; \
+    releaseUrl='https://repo.maven.apache.org/maven2/'; \
+    index='${build}/central.mvn'; \
+    readOnly=true

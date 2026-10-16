@@ -1,0 +1,12 @@
+-runfw: org.eclipse.osgi;version='[3.16,4)'
+-runee: JavaSE-21
+-runproperties: \
+    tester.separatethread=true,\
+    osgi.clean=true,\
+    launch.storage.dir=_rt/smoke,\
+    swtbot.screenshots.dir=${workspace}/screenshots
+-runrequires: \
+    osgi.identity;filter:='(osgi.identity=io.klib.swtbot.support.tests.fixture)',\
+    osgi.identity;filter:='(osgi.identity=org.eclipse.swt)'
+-runstartlevel: order=sortbynameversion,begin=-1
+-runvm: -Dfile.encoding=UTF-8

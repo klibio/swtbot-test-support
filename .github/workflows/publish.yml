@@ -1,0 +1,58 @@
+name: Publish snapshots
+
+on:
+  push:
+    branches: [ 'main' ]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  publish:
+    name: Publish snapshot bundles
+    if: ${{ github.repository == 'klibio/swtbot-test-support' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+      - name: Build
+        id: build
+        run: ./.github/scripts/ci-build.sh
+      - name: Publish snapshots
+        id: publish
+        run: ./.github/scripts/ci-publish.sh
+        env:
+          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          SONATYPE_BEARER: ${{ secrets.SONATYPE_BEARER }}
+      - name: Upload Maven repository
+        if: ${{ always() && ((steps.publish.outcome == 'success') || (steps.publish.outcome == 'failure')) }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: maven-snapshots
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            dist/bundles/**
+      - name: Upload test reports
+        if: ${{ always() && ((steps.build.outcome == 'success') || (steps.build.outcome == 'failure')) }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-test-reports
+          if-no-files-found: warn
+          path: |
+            */generated/test-reports/**/TEST-*.xml

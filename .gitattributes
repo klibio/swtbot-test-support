@@ -1,0 +1,31 @@
+# Normalize line endings for all text files
+* text=auto eol=lf
+
+# Shell scripts and Gradle wrapper must stay LF
+*.sh text eol=lf
+gradlew text eol=lf
+
+# Windows batch files need CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Source and config
+*.java text diff=java
+*.bnd text
+*.bndrun text
+*.mvn text
+*.gradle text
+*.properties text
+*.md text diff=markdown
+*.xml text
+*.json text
+*.yml text
+*.yaml text
+
+# Binaries
+*.jar binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.zip binary

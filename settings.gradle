@@ -1,0 +1,15 @@
+pluginManagement {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    plugins {
+        id 'biz.aQute.bnd.workspace' version '7.4.0'
+    }
+}
+
+plugins {
+    id 'biz.aQute.bnd.workspace'
+}
+
+rootProject.name = 'swtbot-test-support'

@@ -1,0 +1,48 @@
+# ---- Maven GAV & Bundle Metadata ----------------------------------------
+# Maven coordinates, POM generation, GPG signing and bundle manifest
+# headers used by the MavenBndRepository release.
+# -------------------------------------------------------------------------
+
+# Maven groupId; artifactId defaults to Bundle-SymbolicName
+-groupid: io.klib.tools
+
+# The validated release workflow passes the Maven SemVer independently of the OSGi version.
+-pom: version=${if;${env;RELEASE_MAVEN_VERSION};${env;RELEASE_MAVEN_VERSION};${versionmask;===s;${@version}}}
+
+# Maven release: POM from JAR, sources, javadoc and GPG signatures.
+# GPG signing is only active when GPG_KEY_ID and GPG_PASSPHRASE are set.
+-maven-release: \
+    pom;path=JAR,\
+    javadoc;-classpath="${project.buildpath}",\
+    sign;keyname=${env;GPG_KEY_ID};passphrase=${env;GPG_PASSPHRASE}
+
+# Suppress the warning when keyname/passphrase are empty (unsigned local release)
+-fixupmessages.releasesign: "No value after '=' sign for attribute (passphrase|keyname)"
+
+gpg: gpg --homedir ${def;USERHOME;~}/.gnupg --pinentry-mode loopback
+
+# ---- Bundle Metadata ----------------------------------------------------
+
+Bundle-Vendor: klib.io https://klib.io/
+Bundle-Copyright: Copyright (c) Peter Kirschner (2026, ${tstamp;yyyy}) and others. All Rights Reserved.
+Bundle-DocURL: https://github.com/klibio/swtbot-test-support
+
+SPDX-License-Identifier: EPL-2.0
+Bundle-License: "${SPDX-License-Identifier}";\
+    description="This program and the accompanying materials are made available under the terms of the Eclipse Public License 2.0.";\
+    link="https://www.eclipse.org/legal/epl-2.0/"
+
+Bundle-SCM: url=https://github.com/klibio/swtbot-test-support,\
+    connection=scm:git:https://github.com/klibio/swtbot-test-support.git,\
+    developerConnection=scm:git:git@github.com:klibio/swtbot-test-support.git,\
+    tag=${env;RELEASE_TAG;${base.version}}
+
+Bundle-Developers: \
+    peterkir; \
+        name="Peter Kirschner"; \
+        email=peter@klib.io; \
+        url="https://peterkir.github.io"; \
+        organization="klib.io"; \
+        organizationUrl="https://klib.io/"; \
+        roles="developer"; \
+        timezone="Europe/Berlin"

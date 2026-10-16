@@ -1,0 +1,4 @@
+-plugin.tooling: aQute.bnd.deployer.repository.LocalIndexedRepo; \
+    name='SWTBot Tooling'; \
+    local='${user.home}/.bnd/repositories/swtbot-test-support-tooling'; \
+    pretty=true
