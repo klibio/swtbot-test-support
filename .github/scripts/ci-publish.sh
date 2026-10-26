@@ -33,12 +33,12 @@ release_tasks=(
 if [[ -z "${RELEASE_BUNDLE_VERSION:-}" && -z "${RELEASE_MAVEN_VERSION:-}" && -z "${RELEASE_TAG:-}" ]]; then
 	if [[ -z "${SONATYPE_BEARER:-}" ]]; then
 		err "Snapshot build without SONATYPE_BEARER: releasing to dist/bundles only"
-		CANONICAL= ./gradlew --no-daemon --console=plain --rerun-tasks "${release_tasks[@]}" "$@"
+		CANONICAL= bash ./gradlew --no-daemon --console=plain --rerun-tasks "${release_tasks[@]}" "$@"
 		exit 0
 	fi
 	require_signing_credentials
 	err "Publishing snapshot build to Sonatype Central snapshots"
-	CANONICAL=true ./gradlew --no-daemon --console=plain --rerun-tasks "${release_tasks[@]}" "$@"
+	CANONICAL=true bash ./gradlew --no-daemon --console=plain --rerun-tasks "${release_tasks[@]}" "$@"
 	exit 0
 fi
 
@@ -54,7 +54,7 @@ fi
 require_signing_credentials
 
 err "Releasing ${RELEASE_TAG} (${RELEASE_BUNDLE_VERSION}; Maven ${RELEASE_MAVEN_VERSION}) to dist/bundles"
-CANONICAL= ./gradlew --no-daemon --console=plain --rerun-tasks "${release_tasks[@]}" "$@"
+CANONICAL= bash ./gradlew --no-daemon --console=plain --rerun-tasks "${release_tasks[@]}" "$@"
 if [[ -n "${RELEASE_SITE_ARCHIVE:-}" ]]; then
 	node .github/scripts/site/site.mjs verify-maven "${RELEASE_SITE_ARCHIVE}" dist/bundles
 fi
