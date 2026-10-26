@@ -55,6 +55,9 @@ require_signing_credentials
 
 err "Releasing ${RELEASE_TAG} (${RELEASE_BUNDLE_VERSION}; Maven ${RELEASE_MAVEN_VERSION}) to dist/bundles"
 CANONICAL= ./gradlew --no-daemon --console=plain --rerun-tasks "${release_tasks[@]}" "$@"
+if [[ -n "${RELEASE_SITE_ARCHIVE:-}" ]]; then
+	node .github/scripts/site/site.mjs verify-maven "${RELEASE_SITE_ARCHIVE}" dist/bundles
+fi
 ./.github/scripts/sonatype-upload.sh \
 	--publishing-type "${SONATYPE_PUBLISHING_TYPE:-USER_MANAGED}" \
 	dist/bundles

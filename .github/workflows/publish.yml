@@ -13,7 +13,7 @@ defaults:
 
 jobs:
   publish:
-    name: Publish snapshot bundles
+    name: Canonical JDK21 Ubuntu snapshots
     if: ${{ github.repository == 'klibio/swtbot-test-support' }}
     runs-on: ubuntu-latest
     steps:

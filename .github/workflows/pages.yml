@@ -1,0 +1,68 @@
+name: Documentation and p2 Pages
+
+on:
+  workflow_run:
+    workflows: [ Release ]
+    types: [ completed ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - name: Checkout trusted default branch
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: .github/scripts/site/package-lock.json
+      - name: Install documentation tools
+        run: npm --prefix .github/scripts/site ci --ignore-scripts --no-fund
+      - name: Reconstruct complete release history
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node .github/scripts/site/site.mjs download "${GH_REPO}" build/published-sites
+          node .github/scripts/site/site.mjs assemble build/published-sites build/pages .
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload Pages site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/pages
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy documentation and p2
+        id: deployment
+        uses: actions/deploy-pages@v4
