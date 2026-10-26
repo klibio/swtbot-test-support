@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed release and snapshot publication invoking the non-executable Gradle wrapper by running it through Bash, matching CI builds.
 - Bounded latest stable Java CI selection to `>=21 <26`, matching Gradle 9.2.0 runtime support and preventing Java 26+ build-script failures.
 - Added complete public API/package Javadoc for all three libraries, with strict doclint/warnings-as-errors checks and cross-linked versioned API references.
 - Added tagged p2 export with separately selectable core, JUnit 4 and Jupiter features; third-party dependencies remain supplied by consumer target platforms.
