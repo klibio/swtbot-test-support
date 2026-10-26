@@ -18,20 +18,6 @@ on:
       - '.github/workflows/pages.yml'
       - 'docs/**'
   pull_request:
-    paths:
-      - '**'
-      - '!**.md'
-      - '!.github/**'
-      - '.github/workflows/ci.yml'
-      - '.github/workflows/publish.yml'
-      - '.github/workflows/release.yml'
-      - '.github/release.yml'
-      - '.github/scripts/ci-build.sh'
-      - '.github/scripts/ci-publish.sh'
-      - '.github/scripts/sonatype-upload.sh'
-      - '.github/scripts/site/**'
-      - '.github/workflows/pages.yml'
-      - 'docs/**'
   workflow_dispatch:
   workflow_call:
     inputs:
