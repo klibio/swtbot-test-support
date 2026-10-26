@@ -31,6 +31,21 @@ The release guard rejects malformed tags and tags whose commit is not reachable 
 
 `.github/workflows/ci.yml` runs `./.github/scripts/ci-build.sh` (`./gradlew build`, Java 21) on `ubuntu-latest`, `windows-latest` and `macos-latest` for pushes to `main` and pull requests. It is also reusable by the tag release workflow so all platforms test the exact release versions. Test reports are uploaded as workflow artifacts. The native Windows SWT/OSGi matrix below is not part of hosted CI because it needs a locally built bnd 7.5 tester.
 
+### Require CI before merging
+
+CI runs on every pull request, including documentation-only changes, so required checks are not left pending by path filters. Pushes to `main` retain their path filters.
+
+A repository administrator must configure merge protection in [Settings → Rules → Rulesets](https://github.com/klibio/swtbot-test-support/settings/rules); the workflow alone does not enforce it:
+
+1. Create a **New branch ruleset** named `Require CI`, set enforcement to **Active**, and target `main`.
+2. Enable **Require a pull request before merging** and **Require status checks to pass**.
+3. Add all three checks below, selecting **GitHub Actions** as their source. If they are not available, let CI run on a pull request first, then select the reported checks:
+   - `Build JDK21 ubuntu-latest`
+   - `Build JDK21 windows-latest`
+   - `Build JDK21 macos-latest`
+4. Enable **Require branches to be up to date before merging**, leave the bypass list empty unless deliberately needed, and save.
+5. Verify on a pull request targeting `main` (a documentation-only change also works): merging must be blocked while any required check is pending or failing. Once all three succeed, CI no longer blocks merging, provided the branch is up to date and other rules are satisfied.
+
 ## Release
 
 Create a signed tag on `main` and push it to start `.github/workflows/release.yml`:
