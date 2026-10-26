@@ -54,9 +54,10 @@ A repository administrator must configure merge protection in [Settings → Rule
 1. Create a **New branch ruleset** named `Require CI`, set enforcement to **Active**, and target `main`.
 2. Enable **Require a pull request before merging** and **Require status checks to pass**.
 3. Add all three checks below, selecting **GitHub Actions** as their source. If they are not available, let CI run on a pull request first, then select the reported checks:
-   - `Build JDK21 ubuntu-latest`
-   - `Build JDK21 windows-latest`
-   - `Build JDK21 macos-latest`
+   - `Canonical build JDK21 ubuntu-latest`
+   - `Compatibility JDK21 windows-latest`
+   - `Compatibility JDK21 macos-latest`
+   Remove any previously required `Build JDK21 ...` checks: those names were replaced by the canonical and compatibility jobs and will no longer be reported. To gate on the entire CI workflow, also require `Documentation and p2 validation` and every JDK25/latest compatibility check shown in the CI run.
 4. Enable **Require branches to be up to date before merging**, leave the bypass list empty unless deliberately needed, and save.
 5. Verify on a pull request targeting `main` (a documentation-only change also works): merging must be blocked while any required check is pending or failing. Once all three succeed, CI no longer blocks merging, provided the branch is up to date and other rules are satisfied.
 
