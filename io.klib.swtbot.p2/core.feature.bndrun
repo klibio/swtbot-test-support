@@ -1,0 +1,5 @@
+Bundle-SymbolicName: io.klib.swtbot.support.feature
+Bundle-Name: SWTBot Screenshot Support
+Bundle-Description: SWT-only screenshot API. Requires a compatible SWT target platform.
+Bundle-Category: swtbot.support
+-runbundles: io.klib.swtbot.support;version='${Bundle-Version}'
