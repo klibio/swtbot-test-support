@@ -1,0 +1,6 @@
+Bundle-SymbolicName: io.klib.swtbot.junit4.feature
+Bundle-Name: SWTBot JUnit 4 Adapter
+Bundle-Description: Optional JUnit 4 failure screenshots. Requires JUnit 4 in the target platform.
+Bundle-Category: swtbot.support
+Require-Capability: feature;name=io.klib.swtbot.support.feature;version='${Bundle-Version}'
+-runbundles: io.klib.swtbot.junit4;version='${Bundle-Version}'

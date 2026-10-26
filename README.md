@@ -5,6 +5,18 @@
 
 Reusable OSGi screenshot tools for SWT/SWTBot tests. Core uses native SWT only. SWTBot finder itself requires JUnit 4, Hamcrest and JFace; this library avoids that transitive coupling.
 
+## User Documentation and p2
+
+Release documentation: **https://klibio.github.io/swtbot-test-support/** (available after the first release using the Pages workflow).
+
+- User guide and API reference: `https://klibio.github.io/swtbot-test-support/docs/latest/`
+- Stable update site: `https://klibio.github.io/swtbot-test-support/p2/latest/`
+- Reproducible URLs: replace `latest` with the Maven release version, such as `0.2.0` or `0.2.0-rc.1`.
+
+Every future release includes versioned guides and Javadoc for all three libraries, plus a standalone p2 repository. Existing releases are not backfilled. `latest` selects the highest stable SemVer, never a prerelease or merely the most recent release date. Before the first stable release, only versioned URLs exist.
+
+Add the p2 URL to your Eclipse target definition and select core plus only the desired adapter. This site does not mirror SWT, Eclipse or JUnit: supply compatible target locations separately. See [installation](docs/installation.md), [screenshots](docs/screenshots.md), [JUnit adapters](docs/junit.md), and [troubleshooting](docs/troubleshooting.md). Source guide placeholders are replaced with the exact version when published.
+
 ## Bundles
 
 | BSN | Public API | Dependencies |
@@ -29,7 +41,9 @@ The release guard rejects malformed tags and tags whose commit is not reachable 
 
 ## Continuous Integration
 
-`.github/workflows/ci.yml` runs `./.github/scripts/ci-build.sh` (`./gradlew build`, Java 21) on `ubuntu-latest`, `windows-latest` and `macos-latest` for pushes to `main` and pull requests. It is also reusable by the tag release workflow so all platforms test the exact release versions. Test reports are uploaded as workflow artifacts. The native Windows SWT/OSGi matrix below is not part of hosted CI because it needs a locally built bnd 7.5 tester.
+`.github/workflows/ci.yml` runs `./.github/scripts/ci-build.sh` (`./gradlew build`) across `ubuntu-latest`, `windows-latest` and `macos-latest` with Java 21, 25 and the latest stable Temurin release supported by the pinned Gradle (resolved dynamically, excluding early-access builds). Gradle 9.2.0 supports running on Java through 25, so the latest selector is bounded to `>=21 <26`; update this bound together with the Gradle wrapper after checking its [Java compatibility matrix](https://docs.gradle.org/9.2.0/userguide/compatibility.html#java_runtime). Ubuntu with Java 21 is the canonical build: Java 21 is the minimum required by the pinned Eclipse/SWT dependencies. Library classfiles still target Java 17, but Java 17 runtime support is not provided or tested. The canonical job covers the Ubuntu/Java 21 matrix entry; all other entries build and test with their selected JDK to validate compatibility only and never publish. Test reports have unique OS/JDK artifact names.
+
+The workflow runs for pushes to `main` and pull requests and is reusable by the tag release workflow, so all matrix entries validate the exact release versions before publication. Snapshot and tag publication both use the canonical Ubuntu/Java 21 environment, never the moving latest JDK. The native Windows SWT/OSGi matrix below is not part of hosted CI because it needs a locally built bnd 7.5 tester.
 
 ## Release
 
@@ -41,6 +55,35 @@ git push origin v0.1.0
 ```
 
 The workflow validates the tag and reachability from `main`, runs the reusable cross-platform CI at the tag-derived versions, then releases the three library bundles through bnd (`jar`, `-sources`, `-javadoc`, POM, checksums, `.asc` signatures). `.github/scripts/sonatype-upload.sh` uploads the Maven repository to Sonatype Central as a `USER_MANAGED` deployment. It also creates a GitHub Release with the Maven repository ZIP and `SHA256SUMS.txt`; prerelease tags (such as `v0.2.0-rc.1`) create prereleases. Separately, `.github/workflows/publish.yml` publishes `*-SNAPSHOT` artifacts to Sonatype Central snapshots on pushes to `main`.
+
+Before publication, CI validates Javadoc with `-Xdoclint:all -Werror`, builds three independently selectable p2 features, and packages the tagged user guide/API reference. GitHub Releases additionally carry `swtbot-test-support-site-<version>.zip` (version manifest and per-file SHA-256 hashes) and `swtbot-test-support-p2-<version>.zip`. The workflow verifies that p2 and Maven contain byte-identical library bundles. Published site payloads are reused unchanged on same-tag reruns; a different tag commit is rejected.
+
+### GitHub Pages Setup
+
+Once, enable **Settings > Pages > Build and deployment > Source: GitHub Actions**. Allow the `github-pages` environment to deploy from the default branch, and approve deployments if required by repository policy. No additional signing or publication secrets are needed for Pages; its deploy job uses scoped `pages:write` and `id-token:write` permissions.
+
+After a successful tag release, [Pages workflow](.github/workflows/pages.yml) reconstructs all eligible releases from GitHub assets, verifies their metadata/checksums and deploys one complete site. It uses `workflow_run` because releases created using `GITHUB_TOKEN` do not trigger ordinary release-event workflows. Deployments are serialized; older reruns cannot roll `latest` back. Corrupt/incomplete new assets fail deployment without replacing the previous live site. Releases without site payloads are skipped, including historical releases.
+
+To repair a failed Pages deployment, rerun it or run **Documentation and p2 Pages > Run workflow** after fixing the cause. This rebuilds history, not older tags. Keep release site assets: they are the durable source of historical documentation/repositories. Size checks stop before GitHub Pages' 1 GB site limit; history is never silently pruned. Maven Central approval remains separate from Pages deployment. Custom domains are not configured; installation examples use the canonical project URL above.
+
+### Local Documentation Preview
+
+Use Java 21 and Node 24. This generates local artifacts only, without signing or publication credentials:
+
+```bash
+export JAVA_HOME="$HOME/.ecdev/java/ee/JAVA21"
+export PATH="$JAVA_HOME/bin:$PATH"
+export RELEASE_BUNDLE_VERSION=0.2.0 RELEASE_MAVEN_VERSION=0.2.0
+npm --prefix .github/scripts/site ci --ignore-scripts
+npm --prefix .github/scripts/site test
+bash ./gradlew verifyJavadoc :io.klib.swtbot.p2:exportP2
+node .github/scripts/site/site.mjs prepare . build/site-assets "$RELEASE_MAVEN_VERSION" "$RELEASE_BUNDLE_VERSION" "$(git rev-parse HEAD)"
+node .github/scripts/site/site.mjs assemble build/site-assets build/pages .
+```
+
+Open the generated `build/pages/index.html` in a browser. Assembly requires an empty output directory; use a fresh directory on repeated previews. No local server is needed. CI uploads the same structure as the `documentation-and-p2-preview` artifact. All exported packages, public types/constructors/methods, record components and enum constants must have meaningful Javadoc; documentation changes are validated by `check` as well as the dedicated task. Runtime signatures remain unchanged.
+
+CI checks desktop/mobile layout and local links using Playwright Chromium. To repeat locally, run `node .github/scripts/site/node_modules/playwright/cli.js install chromium`, then `node .github/scripts/site/browser.mjs build/pages`. An installed Edge can be used instead with `PLAYWRIGHT_CHANNEL=msedge` if browser downloads are unavailable. Do not disable TLS verification to download browser binaries.
 
 Required repository secrets for publication: `GPG_KEY_ID`, `GPG_PASSPHRASE`, `GPG_PRIVATE_KEY` (armored), `SONATYPE_BEARER` (Central Portal token). Portal prerequisites outside this repository: verified `io.klib` namespace, snapshot publishing enabled, and the GPG public key on a key server.
 

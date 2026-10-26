@@ -78,7 +78,7 @@ jobs:
       release_tag: ${{ needs.guard.outputs.tag }}
 
   release:
-    name: Publish Maven and create GitHub Release
+    name: Canonical JDK21 Ubuntu release
     needs: [ guard, ci ]
     runs-on: ubuntu-latest
     permissions:
@@ -100,6 +100,35 @@ jobs:
           java-version: '21'
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
+      - name: Set up documentation tools
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: .github/scripts/site/package-lock.json
+      - name: Build and validate release documentation and p2
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm --prefix .github/scripts/site ci --ignore-scripts --no-fund
+          npm --prefix .github/scripts/site test
+          bash ./gradlew --no-daemon --console=plain verifyJavadoc :io.klib.swtbot.p2:exportP2
+          node .github/scripts/site/site.mjs prepare . release-assets "${RELEASE_MAVEN_VERSION}" "${RELEASE_BUNDLE_VERSION}" "$(git rev-parse HEAD)"
+          node .github/scripts/site/site.mjs verify "release-assets/swtbot-test-support-site-${RELEASE_MAVEN_VERSION}.zip"
+      - name: Preserve immutable documentation on release reruns
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "${RELEASE_TAG}" --json assets > build/existing-release.json; then
+            if jq -e --arg name "swtbot-test-support-site-${RELEASE_MAVEN_VERSION}.zip" '.assets[] | select(.name == $name)' build/existing-release.json > /dev/null; then
+              mkdir -p build/published-site
+              gh release download "${RELEASE_TAG}" --pattern "swtbot-test-support-site-${RELEASE_MAVEN_VERSION}.zip" --dir build/published-site
+              node .github/scripts/site/site.mjs reuse "build/published-site/swtbot-test-support-site-${RELEASE_MAVEN_VERSION}.zip" release-assets "${RELEASE_MAVEN_VERSION}" "$(git rev-parse HEAD)"
+            fi
+          fi
       - name: Publish to Sonatype Central
         id: publish
         run: ./.github/scripts/ci-publish.sh
@@ -109,6 +138,7 @@ jobs:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           SONATYPE_BEARER: ${{ secrets.SONATYPE_BEARER }}
           SONATYPE_PUBLISHING_TYPE: USER_MANAGED
+          RELEASE_SITE_ARCHIVE: release-assets/swtbot-test-support-site-${{ needs.guard.outputs.maven_version }}.zip
       - name: Assemble GitHub release assets
         shell: bash
         run: |

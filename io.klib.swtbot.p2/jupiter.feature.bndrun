@@ -1,0 +1,6 @@
+Bundle-SymbolicName: io.klib.swtbot.jupiter.feature
+Bundle-Name: SWTBot Jupiter Adapter
+Bundle-Description: Optional Jupiter 5/6 failure screenshots. Supply a coherent Jupiter runtime separately.
+Bundle-Category: swtbot.support
+Require-Capability: feature;name=io.klib.swtbot.support.feature;version='${Bundle-Version}'
+-runbundles: io.klib.swtbot.jupiter;version='${Bundle-Version}'

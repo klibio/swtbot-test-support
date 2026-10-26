@@ -9,3 +9,4 @@ reports/
 screenshots/
 **/build/
 dist/
+**/node_modules/

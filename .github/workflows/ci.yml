@@ -14,6 +14,9 @@ on:
       - '.github/scripts/ci-build.sh'
       - '.github/scripts/ci-publish.sh'
       - '.github/scripts/sonatype-upload.sh'
+      - '.github/scripts/site/**'
+      - '.github/workflows/pages.yml'
+      - 'docs/**'
   pull_request:
     paths:
       - '**'
@@ -26,6 +29,9 @@ on:
       - '.github/scripts/ci-build.sh'
       - '.github/scripts/ci-publish.sh'
       - '.github/scripts/sonatype-upload.sh'
+      - '.github/scripts/site/**'
+      - '.github/workflows/pages.yml'
+      - 'docs/**'
   workflow_dispatch:
   workflow_call:
     inputs:
@@ -56,13 +62,48 @@ permissions:
   contents: read
 
 jobs:
+  documentation:
+    name: Documentation and p2 validation
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_BUNDLE_VERSION: ${{ inputs.bundle_version || '0.0.0.ci' }}
+      RELEASE_MAVEN_VERSION: ${{ inputs.maven_version || '0.0.0-ci' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: .github/scripts/site/package-lock.json
+      - name: Test and package documentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm --prefix .github/scripts/site ci --ignore-scripts --no-fund
+          npm --prefix .github/scripts/site test
+          bash ./gradlew --no-daemon --console=plain verifyJavadoc :io.klib.swtbot.p2:exportP2
+          node .github/scripts/site/site.mjs prepare . build/site-assets "${RELEASE_MAVEN_VERSION}" "${RELEASE_BUNDLE_VERSION}" "$(git rev-parse HEAD)"
+          node .github/scripts/site/site.mjs assemble build/site-assets build/pages .
+      - name: Check desktop and mobile documentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          node .github/scripts/site/node_modules/playwright/cli.js install --with-deps chromium
+          node .github/scripts/site/browser.mjs build/pages
+      - name: Upload documentation preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-and-p2-preview
+          path: build/pages
+
   build:
-    name: Build JDK21 ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ 'ubuntu-latest', 'windows-latest', 'macos-latest' ]
-    runs-on: ${{ matrix.os }}
+    name: Canonical build JDK21 ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
         uses: actions/checkout@v5
@@ -86,7 +127,47 @@ jobs:
         if: ${{ always() && ((steps.build.outcome == 'success') || (steps.build.outcome == 'failure')) }}
         uses: actions/upload-artifact@v4
         with:
-          name: Build_JDK21_${{ matrix.os }}-test-reports
+          name: Canonical_JDK21_ubuntu-latest-test-reports
+          if-no-files-found: warn
+          path: |
+            */generated/test-reports/**/TEST-*.xml
+
+  compatibility:
+    name: Compatibility JDK${{ matrix.java }} ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ 'ubuntu-latest', 'windows-latest', 'macos-latest' ]
+        java: [ '21', '25', 'latest' ]
+        exclude:
+          - os: ubuntu-latest
+            java: '21'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Set up compatibility Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java == 'latest' && '>=21 <26' || matrix.java }}
+          check-latest: true
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+      - name: Build and validate compatibility
+        id: build
+        run: ./.github/scripts/ci-build.sh
+        env:
+          RELEASE_BUNDLE_VERSION: ${{ inputs.bundle_version || '' }}
+          RELEASE_MAVEN_VERSION: ${{ inputs.maven_version || '' }}
+          RELEASE_TAG: ${{ inputs.release_tag || '' }}
+      - name: Upload Test Reports
+        if: ${{ always() && ((steps.build.outcome == 'success') || (steps.build.outcome == 'failure')) }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Compatibility_JDK${{ matrix.java }}_${{ matrix.os }}-test-reports
           if-no-files-found: warn
           path: |
             */generated/test-reports/**/TEST-*.xml

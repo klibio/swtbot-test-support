@@ -17,6 +17,8 @@ Bundle-SymbolicName: ${project.name}
 -noextraheaders: true
 -testpath: org.junit;version='[4.13.2,5)',org.hamcrest;version='[3,4)'
 
+-plugin.p2export: aQute.p2.export.P2Exporter
+
 -plugin.support: aQute.bnd.deployer.repository.LocalIndexedRepo; \
     name='SWTBot Test Support'; \
     local='${user.home}/.bnd/repositories/swtbot-test-support'; \

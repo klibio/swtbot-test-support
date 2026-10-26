@@ -24,9 +24,20 @@ import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 
+/**
+ * Captures screenshots using an explicitly supplied, existing application Display.
+ * Does not create a Display or change workbench state. Shell suppliers run on that
+ * Display's UI thread. Scope instances to a test/session: diagnosed throwables are
+ * retained for duplicate suppression. Keep shells visible until capture completes.
+ */
 public final class Screenshots {
+    /** Test action that may throw any original test failure. */
     @FunctionalInterface
     public interface Action {
+        /**
+         * Performs a test action on the calling thread.
+         * @throws Throwable any original action failure
+         */
         void run() throws Throwable;
     }
 
@@ -35,16 +46,34 @@ public final class Screenshots {
     private final Supplier<Display> displaySupplier;
     private final Set<Throwable> diagnosed = Collections.newSetFromMap(new IdentityHashMap<>());
 
+    /**
+     * Creates isolated artifact directories without obtaining or creating a Display.
+     * @param options non-null capture settings
+     * @param testId non-null test identity used for a sanitized directory name
+     * @param displaySupplier non-null supplier of the existing application Display; may return null
+     * @throws IOException if artifact directories cannot be created
+     * @throws NullPointerException if an argument is null
+     */
     public Screenshots(CaptureOptions options, String testId, Supplier<Display> displaySupplier) throws IOException {
         this.options = Objects.requireNonNull(options, "options");
         this.paths = new ArtifactPaths(options.outputDirectory(), testId);
         this.displaySupplier = Objects.requireNonNull(displaySupplier, "displaySupplier");
     }
 
+    /**
+     * Returns the directory containing this instance's artifacts.
+     * @return the absolute artifact directory for this instance
+     */
     public Path directory() {
         return paths.directory();
     }
 
+    /**
+     * Captures each configured mode sequentially, with a separate timeout per mode.
+     * @param checkpoint artifact label, sanitized and bounded during allocation
+     * @param shell supplier evaluated on the application UI thread
+     * @return immutable outcomes in configured mode order
+     */
     public List<CaptureResult> checkpoint(String checkpoint, Supplier<Shell> shell) {
         List<CaptureResult> results = new ArrayList<>();
         for (CaptureMode mode : options.modes()) {
@@ -53,10 +82,24 @@ public final class Screenshots {
         return List.copyOf(results);
     }
 
+    /**
+     * Captures all configured modes and requires every outcome to be captured.
+     * @param checkpoint artifact label
+     * @param shell supplier evaluated on the application UI thread
+     * @throws IllegalStateException if any capture was skipped or failed
+     */
     public void requireCheckpoint(String checkpoint, Supplier<Shell> shell) {
         checkpoint(checkpoint, shell).forEach(CaptureResult::requireCaptured);
     }
 
+    /**
+     * Runs an action on the calling thread; diagnoses failures before caller teardown
+     * and rethrows the same original throwable, never a replacement diagnostic error.
+     * @param checkpoint failure artifact label
+     * @param shell supplier evaluated on the application UI thread during capture
+     * @param action test action
+     * @throws Throwable the original action failure
+     */
     public void guard(String checkpoint, Supplier<Shell> shell, Action action) throws Throwable {
         try {
             action.run();
@@ -66,6 +109,14 @@ public final class Screenshots {
         }
     }
 
+    /**
+     * Diagnoses an original failure at most once by identity within this instance.
+     * Logs outcomes and attaches capture problems as suppressed exceptions instead
+     * of throwing them. Invoke while application UI still exists.
+     * @param checkpoint failure artifact label
+     * @param shell supplier evaluated on the application UI thread
+     * @param original non-null original failure to preserve
+     */
     public void failure(String checkpoint, Supplier<Shell> shell, Throwable original) {
         synchronized (diagnosed) {
             if (!diagnosed.add(original)) {
@@ -87,6 +138,18 @@ public final class Screenshots {
         }
     }
 
+    /**
+     * Captures one PNG, returning skipped/failed outcomes when evidence is unavailable.
+     * Runs immediately on the UI thread or queues bounded work otherwise. Timeout or
+     * interruption cancels queued work without interrupting executing native work;
+     * interruption status is restored. Screen modes can include occlusion/private pixels.
+     * Native images and graphics contexts are disposed after capture.
+     * @param checkpoint artifact label, sanitized and bounded during allocation
+     * @param mode non-null region to capture
+     * @param shellSupplier supplier of a visible live shell on the application Display
+     * @return capture outcome, including PNG path/dimensions on success
+     * @throws NullPointerException if mode is null
+     */
     public CaptureResult capture(String checkpoint, CaptureMode mode, Supplier<Shell> shellSupplier) {
         Objects.requireNonNull(mode, "mode");
         try {

@@ -1,3 +1,58 @@
 wrapper {
     gradleVersion = '9.2.0'
 }
+
+def libraries = ['io.klib.swtbot.support', 'io.klib.swtbot.junit4', 'io.klib.swtbot.jupiter']
+
+def compileApiDoclet = tasks.register('compileApiDoclet', JavaCompile) {
+    source = file('.github/scripts/site/ApiDoclet.java')
+    classpath = files()
+    destinationDirectory = layout.buildDirectory.dir('api-doclet')
+    sourceCompatibility = '17'
+    targetCompatibility = '17'
+    options.release = 17
+}
+
+configure(subprojects.findAll { it.name in libraries }) {
+    plugins.withId('java') {
+            tasks.named('jar') {
+                inputs.property('releaseBundleVersion', providers.environmentVariable('RELEASE_BUNDLE_VERSION').orElse(''))
+                inputs.property('releaseMavenVersion', providers.environmentVariable('RELEASE_MAVEN_VERSION').orElse(''))
+                inputs.property('releaseTag', providers.environmentVariable('RELEASE_TAG').orElse(''))
+            }
+        tasks.register('apiJavadoc', Javadoc) {
+            dependsOn compileApiDoclet
+            source = sourceSets.main.allJava
+            classpath = sourceSets.main.compileClasspath
+            destinationDir = layout.buildDirectory.dir('api-javadoc').get().asFile
+            options.encoding = 'UTF-8'
+            options.doclet = 'ApiDoclet'
+            options.docletpath = [rootProject.layout.buildDirectory.dir('api-doclet').get().asFile]
+            options.memberLevel = JavadocMemberLevel.PROTECTED
+            options.addBooleanOption('Xdoclint:all', true)
+            options.addBooleanOption('Werror', true)
+            options.noTimestamp = true
+            if (project.name != 'io.klib.swtbot.support') {
+                dependsOn ':io.klib.swtbot.support:apiJavadoc'
+                options.linksOffline('../io.klib.swtbot.support/',
+                    rootProject.file('io.klib.swtbot.support/generated/api-javadoc').absolutePath)
+            }
+        }
+        tasks.named('check') { dependsOn tasks.named('apiJavadoc') }
+    }
+}
+
+tasks.register('verifyJavadoc') {
+    dependsOn libraries.collect { ":${it}:apiJavadoc" }
+}
+
+configure(subprojects.findAll { it.name == 'io.klib.swtbot.p2' }) {
+    tasks.register('exportP2', aQute.bnd.gradle.Export) {
+        dependsOn libraries.collect { ":${it}:jar" }
+        bndrun = file('release.bndrun')
+        workingDirectory = rootProject.layout.projectDirectory
+        exporter = 'p2'
+        destinationDirectory = rootProject.layout.buildDirectory.dir('p2')
+        outputs.upToDateWhen { false }
+    }
+}

@@ -1,0 +1,6 @@
+Bundle-SymbolicName: io.klib.swtbot.repository
+Bundle-Name: SWTBot Test Support
+Bundle-Vendor: klib.io
+Bundle-License: EPL-2.0;link=https://www.eclipse.org/legal/epl-2.0/
+features: ${workspace}/io.klib.swtbot.p2/core.feature.bndrun,${workspace}/io.klib.swtbot.p2/junit4.feature.bndrun,${workspace}/io.klib.swtbot.p2/jupiter.feature.bndrun
+-categories: swtbot.support;label='SWTBot Test Support';description='SWT screenshots and optional test adapters'
